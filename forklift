@@ -30,19 +30,34 @@ cleanup() {
 }
 trap cleanup ABRT EXIT INT TERM
 
+# provides --pid for POSIX tail
+tailpid() {
+	file="$1"
+	pid="$2"
+	tail -f "$file" &
+	childpid=$!
+	while :; do
+		if ! ps -p "$pid" >/dev/null 2>&1; then
+			kill "$childpid" >/dev/null 2>&1
+			break
+		fi
+		sleep 1
+	done
+}
+
 # process args
 while getopts "w:" opt; do
 	case "$opt" in
 	'w') num_workers="$OPTARG" ;;
 	*)
-		printf "Usage:\n\tforklift [-w #] command\n"
+		printf "Usage:\n\tforklift [-w#] command\n"
 		exit 1
 		;;
 	esac
 done
 shift $((OPTIND - 1))
 if [ $# -ne 1 ]; then
-	printf "Must provide 1 command. Usage:\n\tforklift [-w #] command\n"
+	printf "Must provide 1 command. Usage:\n\tforklift [-w#] command\n"
 	exit 1
 fi
 
@@ -61,7 +76,7 @@ while read -r line; do
 	if [ "$next_fifo" -gt "$num_fifos" ]; then
 		num_fifos=$((num_fifos + 1))
 		mkfifo "$fifo_prefix-$num_fifos"
-		tail --pid $lockpid -f "$fifo_prefix-$num_fifos" | $1 &
+		tailpid "$fifo_prefix-$num_fifos" $lockpid | $1 &
 	fi
 	echo "$line" >"$fifo_prefix-$next_fifo"
 	if [ "$next_fifo" -eq "$num_workers" ]; then

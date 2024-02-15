@@ -1,6 +1,6 @@
 forklift
 --------
-The POSIX¹ shell concurrent stream processor!
+The POSIX shell concurrent stream processor!
 
 Forklift reads from stdin and distributes each line of input among its worker pool.
 
@@ -17,8 +17,6 @@ Forklift reads from stdin and distributes each line of input among its worker po
     1 3 5 7 9
 
 For more details on the rationale and implementation, see my blog [post](https://blog.dnmfarrell.com/post/parallel-processing-with-bash/).
-
-1. Except it uses non-POSIX `tail` :|
 
 License
 -------
