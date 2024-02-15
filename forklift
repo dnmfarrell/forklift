@@ -75,7 +75,7 @@ lockpid=$!
 while [ "$num_fifos" -lt "$num_workers" ]; do
 	num_fifos=$((num_fifos + 1))
 	mkfifo "$fifo_prefix-$num_fifos"
-	tailpid "$fifo_prefix-$num_fifos" $lockpid | $1 &
+	tailpid "$fifo_prefix-$num_fifos" $lockpid | eval "$1" &
 done
 
 # distribute input
