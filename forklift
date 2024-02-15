@@ -71,13 +71,15 @@ touch "$lock"
 } &
 lockpid=$!
 
+# create worker pool
+while [ "$num_fifos" -lt "$num_workers" ]; do
+	num_fifos=$((num_fifos + 1))
+	mkfifo "$fifo_prefix-$num_fifos"
+	tailpid "$fifo_prefix-$num_fifos" $lockpid | $1 &
+done
+
 # distribute input
 while read -r line; do
-	if [ "$next_fifo" -gt "$num_fifos" ]; then
-		num_fifos=$((num_fifos + 1))
-		mkfifo "$fifo_prefix-$num_fifos"
-		tailpid "$fifo_prefix-$num_fifos" $lockpid | $1 &
-	fi
 	echo "$line" >"$fifo_prefix-$next_fifo"
 	if [ "$next_fifo" -eq "$num_workers" ]; then
 		next_fifo=1
