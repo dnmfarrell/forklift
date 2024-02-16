@@ -57,7 +57,7 @@ while getopts "w:" opt; do
 done
 shift $((OPTIND - 1))
 if [ $# -ne 1 ]; then
-	printf "Must provide 1 command. Usage:\n\tforklift [-w#] command\n"
+	printf "Must provide 1 command.\nUsage:\n\tforklift [-w#] command\n"
 	exit 1
 fi
 
