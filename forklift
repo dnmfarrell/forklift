@@ -18,31 +18,29 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-set -eu
 num_workers=1
 num_fifos=0
 next_fifo=1
-fifo_prefix="${TMPDIR-/tmp}/forklift-$$"
+prefix_inp="${TMPDIR-/tmp}/forklift-$$"
+prefix_sig="$prefix_inp-x"
 
 cleanup() {
-	rm -f "$fifo_prefix"*
+	for sigchan in "$prefix_sig"*; do
+		echo 1 >"$sigchan"
+	done
+	rm -f "$prefix_inp"*
 	wait
 }
 trap cleanup ABRT EXIT INT TERM
 
-# provides --pid for POSIX tail
-tailpid() {
-	file="$1"
-	pid="$2"
-	tail -f "$file" &
+# tails until told to stop
+tailsig() {
+	inp="$1"
+	sig="$2"
+	tail -f "$inp" &
 	childpid=$!
-	while :; do
-		if ! ps -p "$pid" >/dev/null 2>&1; then
-			kill "$childpid" >/dev/null 2>&1
-			break
-		fi
-		sleep 1
-	done
+	read line <"$sig"
+	kill "$childpid" >/dev/null 2>&1
 }
 
 # process args
@@ -61,26 +59,17 @@ if [ $# -ne 1 ]; then
 	exit 1
 fi
 
-# fork child lock
-export lock="$fifo_prefix-lock"
-touch "$lock"
-{
-	while [ -f "$lock" ]; do
-		sleep 1
-	done
-} &
-lockpid=$!
-
 # create worker pool
 while [ "$num_fifos" -lt "$num_workers" ]; do
 	num_fifos=$((num_fifos + 1))
-	mkfifo "$fifo_prefix-$num_fifos"
-	tailpid "$fifo_prefix-$num_fifos" $lockpid | eval "$1" &
+	mkfifo "$prefix_inp-$num_fifos"
+	mkfifo "$prefix_sig-$num_fifos"
+	tailsig "$prefix_inp-$num_fifos" "$prefix_sig-$num_fifos" | eval "$1" &
 done
 
 # distribute input
 while read -r line; do
-	echo "$line" >"$fifo_prefix-$next_fifo"
+	echo "$line" >"$prefix_inp-$next_fifo"
 	if [ "$next_fifo" -eq "$num_workers" ]; then
 		next_fifo=1
 	else
